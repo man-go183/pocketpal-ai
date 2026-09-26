@@ -14,7 +14,7 @@ const isValidTemplate = (tpl: string): boolean => {
   try {
     const url = new URL(tpl.replace('{q}', 'test'));
     return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch (e) {
+  } catch {
     return false;
   }
 };
@@ -41,7 +41,7 @@ export const buildEngineUrl = (template: string, query: string): string =>
 export const hostOf = (template: string): string => {
   try {
     return new URL(template.replace('{q}', 'test')).hostname;
-  } catch (e) {
+  } catch {
     return '';
   }
 };

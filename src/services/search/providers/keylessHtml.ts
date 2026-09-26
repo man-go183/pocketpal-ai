@@ -1,10 +1,6 @@
 import type {SearchHit} from '../types';
 import {fetchText} from './http';
-import {
-  buildEngineUrl,
-  getKeylessEngines,
-  hostOf,
-} from './keylessEngines';
+import {buildEngineUrl, getKeylessEngines, hostOf} from './keylessEngines';
 
 const stripTags = (s: string): string =>
   s
@@ -23,7 +19,11 @@ const isJunkTitle = (t: string): boolean => {
   if (t.length < 8 || t.length > 220) {
     return true;
   }
-  if (/^(sign in|log in|accept|cookie|subscribe|follow|share|menu|search|home|next|more)$/i.test(t)) {
+  if (
+    /^(sign in|log in|accept|cookie|subscribe|follow|share|menu|search|home|next|more)$/i.test(
+      t,
+    )
+  ) {
     return true;
   }
   if (/[›»]/.test(t)) {
@@ -64,7 +64,7 @@ export const extractAnchors = (html: string, host: string): SearchHit[] => {
       if (out.length >= 12) {
         break;
       }
-    } catch (e) {
+    } catch {
       continue;
     }
   }

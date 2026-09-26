@@ -16,7 +16,7 @@ export class KeylessProvider implements SearchProvider {
     let primary: SearchHit[] = [];
     try {
       primary = await searchKeylessHtml(query, opts.maxResults);
-    } catch (e) {
+    } catch {
       primary = [];
     }
     if (primary.length > 0) {
