@@ -68,6 +68,7 @@ import {
 } from '../../utils';
 import {t} from '../../locales';
 import {checkGpuSupport} from '../../utils/deviceCapabilities';
+import {localApiService} from '../../services/localApi/LocalApiService';
 import {exportLegacyChatSessions} from '../../utils/exportUtils';
 import {getDeviceOptions, DeviceOption} from '../../utils/deviceSelection';
 import {
@@ -105,6 +106,13 @@ export const SettingsScreen: React.FC = observer(() => {
   const [showSearchKeySheet, setShowSearchKeySheet] = useState(false);
   const searchProviderButtonRef = useRef<View>(null);
   const [gpuSupported, setGpuSupported] = useState(false);
+  const [localApiOn, setLocalApiOn] = useState(localApiService.running);
+  const [localApiStatus, setLocalApiStatus] = useState(
+    localApiService.statusText,
+  );
+  const [enginesDraft, setEnginesDraft] = useState(
+    searchProviderStore.keylessEnginesText,
+  );
   const [draftModelAnchor, setDraftModelAnchor] = useState<{
     x: number;
     y: number;
@@ -918,7 +926,53 @@ export const SettingsScreen: React.FC = observer(() => {
             </Card.Content>
           </Card>
 
-          {/* Memory Settings */}
+          {/* Local API server (Android personal fork): exposes the loaded
+              on-device model at http://127.0.0.1:12345/v1/chat/completions */}
+          {Platform.OS === 'android' && (
+            <>
+              <Card elevation={0} style={styles.card}>
+                <Card.Title title="Local API server" />
+                <Card.Content>
+                  <View style={styles.settingItemContainer}>
+                    <View style={styles.switchContainer}>
+                      <View style={styles.textContainer}>
+                        <Text variant="titleMedium" style={styles.textLabel}>
+                          Serve loaded model on 127.0.0.1:12345
+                        </Text>
+                        <Text
+                          variant="labelSmall"
+                          style={styles.textDescription}>
+                          {localApiStatus ||
+                            'POST /v1/chat/completions, GET /v1/models (non-streaming)'}
+                        </Text>
+                      </View>
+                      <Switch
+                        testID="local-api-switch"
+                        value={localApiOn}
+                        onValueChange={async value => {
+                          setLocalApiOn(value);
+                          try {
+                            if (value) {
+                              await localApiService.start(12345);
+                            } else {
+                              await localApiService.stop();
+                            }
+                          } catch (e: any) {
+                            setLocalApiOn(false);
+                            setLocalApiStatus(
+                              'failed: ' + (e?.message || 'unknown error'),
+                            );
+                            return;
+                          }
+                          setLocalApiStatus(localApiService.statusText);
+                        }}
+                      />
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+
+              {/* Memory Settings */}
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.memorySettings} />
             <Card.Content>
@@ -1262,9 +1316,11 @@ export const SettingsScreen: React.FC = observer(() => {
                   </View>
                 </View>
 
-                {/* Per-provider BYOK key entry */}
-                <Divider style={styles.divider} />
-                <View style={styles.switchContainer}>
+                {/* Per-provider BYOK key entry (keyless needs no key) */}
+                {activeSearchProviderId !== 'keyless' && (
+                  <>
+                    <Divider style={styles.divider} />
+                    <View style={styles.switchContainer}>
                   <View style={styles.textContainer}>
                     <Text variant="titleMedium" style={styles.textLabel}>
                       {l10n.settings.internetSearch.keyLabel}
@@ -1299,9 +1355,44 @@ export const SettingsScreen: React.FC = observer(() => {
                       : l10n.settings.internetSearch.setKeyButton}
                   </Button>
                 </View>
+                  </>
+                )}
 
-                {/* Result-count control */}
-                <Divider style={styles.divider} />
+                {/* Editable search pages (keyless only): one result-page URL
+                    per line, {q} marks the query. Tried in order. */}
+                {activeSearchProviderId === 'keyless' && (
+                  <>
+                    <Divider style={styles.divider} />
+                    <View style={styles.settingItemContainer}>
+                      <Text variant="titleMedium" style={styles.textLabel}>
+                        Search pages
+                      </Text>
+                      <Text
+                        variant="labelSmall"
+                        style={styles.textDescription}>
+                        One per line, with {'{q}'} where the words go. Saved
+                        when you leave this box.
+                      </Text>
+                      <TextInput
+                        testID="keyless-engines-input"
+                        style={styles.textInput}
+                        multiline
+                        numberOfLines={4}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        value={enginesDraft}
+                        onChangeText={setEnginesDraft}
+                        onBlur={() =>
+                          searchProviderStore.setKeylessEnginesText(
+                            enginesDraft,
+                          )
+                        }
+                      />
+                    </View>
+                  </>
+                )}
+
+                {/* Result-count control */}                <Divider style={styles.divider} />
                 <View style={styles.textContainer}>
                   <Text variant="titleMedium" style={styles.textLabel}>
                     {l10n.settings.internetSearch.resultCountLabel}
