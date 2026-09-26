@@ -971,8 +971,10 @@ export const SettingsScreen: React.FC = observer(() => {
                   </View>
                 </Card.Content>
               </Card>
+            </>
+          )}
 
-              {/* Memory Settings */}
+          {/* Memory Settings */}
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.memorySettings} />
             <Card.Content>
