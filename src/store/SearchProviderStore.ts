@@ -5,6 +5,11 @@ import * as Keychain from 'react-native-keychain';
 
 import type {SearchProviderId} from '../services/search/types';
 import {resetSearchCache} from '../services/search/searchBudget';
+import {
+  DEFAULT_KEYLESS_ENGINES,
+  parseEnginesText,
+  setKeylessEngines,
+} from '../services/search/providers/keylessEngines';
 
 /** Distinct Keychain service per provider so iOS entries co-exist. */
 const keychainService = (id: SearchProviderId): string =>
@@ -18,14 +23,16 @@ export interface SearchProviderMeta {
 }
 
 /** Parallel ships gated (not selectable) until its free-tier/PAYG terms are confirmed. */
+/** Keyless needs no API key: HTML result pages first, data APIs as backup. */
 export const SEARCH_PROVIDERS: SearchProviderMeta[] = [
+  {id: 'keyless', label: 'Keyless (no key)', selectable: true},
   {id: 'tavily', label: 'Tavily', selectable: true},
   {id: 'brave', label: 'Brave', selectable: true},
   {id: 'exa', label: 'Exa', selectable: true},
   {id: 'parallel', label: 'Parallel', selectable: false},
 ];
 
-const DEFAULT_PROVIDER: SearchProviderId = 'brave';
+const DEFAULT_PROVIDER: SearchProviderId = 'keyless';
 const DEFAULT_RESULT_COUNT = 5;
 const MIN_RESULT_COUNT = 1;
 const MAX_RESULT_COUNT = 8;
@@ -34,6 +41,8 @@ class SearchProviderStore {
   activeProviderId: SearchProviderId = DEFAULT_PROVIDER;
   resultCount: number = DEFAULT_RESULT_COUNT;
   hasConsentedToSearch = false;
+  /** One search-page URL template per line; `{q}` marks the query. */
+  keylessEnginesText: string = DEFAULT_KEYLESS_ENGINES.join('\n');
 
   /** In-memory mirror of each provider's BYOK key (source of truth: Keychain). */
   private keys: Partial<Record<SearchProviderId, string>> = {};
@@ -43,11 +52,33 @@ class SearchProviderStore {
 
     makePersistable(this, {
       name: 'SearchProviderStore',
-      properties: ['activeProviderId', 'resultCount', 'hasConsentedToSearch'],
+      properties: [
+        'activeProviderId',
+        'resultCount',
+        'hasConsentedToSearch',
+        'keylessEnginesText',
+      ],
       storage: AsyncStorage,
-    }).then(() => this.normalizeHydratedPrefs());
+    }).then(() => {
+      this.normalizeHydratedPrefs();
+      this.syncKeylessEngines();
+    });
 
+    this.syncKeylessEngines();
     this.loadKeysFromSecureStorage();
+  }
+
+  /** Pushes the editable engine list into the keyless provider. */
+  syncKeylessEngines() {
+    setKeylessEngines(parseEnginesText(this.keylessEnginesText));
+  }
+
+  setKeylessEnginesText(text: string) {
+    runInAction(() => {
+      this.keylessEnginesText = text;
+    });
+    this.syncKeylessEngines();
+    resetSearchCache();
   }
 
   // Persisted prefs skip the setters — re-validate after hydration so a stale
@@ -66,10 +97,16 @@ class SearchProviderStore {
           )
         : DEFAULT_RESULT_COUNT;
     const consent = (this.hasConsentedToSearch as unknown) === true;
+    const enginesText =
+      typeof this.keylessEnginesText === 'string' &&
+      parseEnginesText(this.keylessEnginesText).length > 0
+        ? this.keylessEnginesText
+        : DEFAULT_KEYLESS_ENGINES.join('\n');
     runInAction(() => {
       this.activeProviderId = provider;
       this.resultCount = count;
       this.hasConsentedToSearch = consent;
+      this.keylessEnginesText = enginesText;
     });
   }
 
@@ -103,6 +140,9 @@ class SearchProviderStore {
   }
 
   get isProviderConfigured(): boolean {
+    if (this.activeProviderId === 'keyless') {
+      return true;
+    }
     return this.hasKey(this.activeProviderId);
   }
 
