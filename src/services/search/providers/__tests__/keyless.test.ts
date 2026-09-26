@@ -44,7 +44,10 @@ describe('keylessEngines', () => {
   });
 
   it('accepts custom engines and drops invalid lines', () => {
-    setKeylessEngines(['not a url', 'https://marginalia-search.com/search?query={q}']);
+    setKeylessEngines([
+      'not a url',
+      'https://marginalia-search.com/search?query={q}',
+    ]);
     expect(getKeylessEngines()).toEqual([
       'https://marginalia-search.com/search?query={q}',
     ]);
