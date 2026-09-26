@@ -2,10 +2,9 @@ import {modelStore} from '../../store';
 
 function getNative(): any | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const m = require('../../specs/NativeLocalApi');
     return m && m.default ? m.default : m;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -33,7 +32,7 @@ class LocalApiService {
       if (ip) {
         wifiPart = ` • wifi: ${ip}:${this.port}`;
       }
-    } catch (e) {}
+    } catch {}
     this.statusText = this.running
       ? `listening on 127.0.0.1:${this.port}${wifiPart}`
       : 'stopped';
@@ -49,7 +48,7 @@ class LocalApiService {
   async stop(): Promise<void> {
     try {
       await getNative()?.stop();
-    } catch (e) {}
+    } catch {}
     this.running = false;
     this.port = 0;
     this.statusText = 'stopped';
@@ -64,7 +63,7 @@ class LocalApiService {
       let req: any = null;
       try {
         req = await native.takeNext(15000);
-      } catch (e) {
+      } catch {
         await new Promise(r => setTimeout(r, 1000));
         continue;
       }
@@ -81,7 +80,7 @@ class LocalApiService {
             500,
             JSON.stringify({error: e?.message || 'internal error'}),
           );
-        } catch (ignored) {}
+        } catch {}
       }
     }
   }
@@ -114,7 +113,7 @@ class LocalApiService {
       let payload: any = {};
       try {
         payload = JSON.parse(req.body || '{}');
-      } catch (e) {
+      } catch {
         return {code: 400, body: JSON.stringify({error: 'invalid JSON'})};
       }
       if (payload.stream) {
@@ -189,7 +188,7 @@ class LocalApiService {
       const m = (modelStore as any)?.activeModel;
       const id = m?.id || m?.modelId;
       return id ? String(id) : '';
-    } catch (e) {
+    } catch {
       return '';
     }
   }
