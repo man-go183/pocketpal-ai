@@ -57,9 +57,14 @@ describe('SearchProviderStore', () => {
         'activeProviderId',
         'resultCount',
         'hasConsentedToSearch',
+        'keylessEnginesText',
       ]);
       expect(config.properties).not.toContain('keys');
-      expect(JSON.stringify(config.properties)).not.toMatch(/key/i);
+      expect(
+        JSON.stringify(
+          config.properties.filter(p => p !== 'keylessEnginesText'),
+        ),
+      ).not.toMatch(/key/i);
     });
 
     it('writes BYOK keys only through Keychain, not via the persisted store', async () => {
@@ -116,7 +121,7 @@ describe('SearchProviderStore', () => {
   describe('preferences', () => {
     it('sets the active provider only for selectable providers', async () => {
       const store = await newStore();
-      // Switch away from the brave default so the write is observable.
+      // Switch away from the keyless default so the write is observable.
       store.setActiveProvider('tavily');
       expect(store.activeProviderId).toBe('tavily');
 
@@ -146,7 +151,7 @@ describe('SearchProviderStore', () => {
       const store = await newStore();
       store.activeProviderId = 'parallel'; // gated; only reachable via stale storage
       store.normalizeHydratedPrefs();
-      expect(store.activeProviderId).toBe('brave');
+      expect(store.activeProviderId).toBe('keyless');
     });
 
     it('clamps a persisted out-of-range result count', async () => {
