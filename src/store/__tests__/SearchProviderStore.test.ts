@@ -27,9 +27,9 @@ describe('SearchProviderStore', () => {
   };
 
   describe('initial state', () => {
-    it('defaults to brave, result count 5, no consent', async () => {
+    it('defaults to keyless, result count 5, no consent', async () => {
       const store = await newStore();
-      expect(store.activeProviderId).toBe('brave');
+      expect(store.activeProviderId).toBe('keyless');
       expect(store.resultCount).toBe(5);
       expect(store.hasConsentedToSearch).toBe(false);
     });
@@ -190,8 +190,11 @@ describe('SearchProviderStore', () => {
   });
 
   describe('isProviderConfigured', () => {
-    it('is false with no key and true once the active provider has a key', async () => {
+    it('is true for keyless with no key; keyed providers need a key', async () => {
       const store = await newStore();
+      expect(store.activeProviderId).toBe('keyless');
+      expect(store.isProviderConfigured).toBe(true);
+      store.setActiveProvider('brave');
       expect(store.isProviderConfigured).toBe(false);
       await store.setKey('brave', 'k'); // the active provider
       expect(store.isProviderConfigured).toBe(true);
@@ -199,11 +202,8 @@ describe('SearchProviderStore', () => {
   });
 
   describe('canSearch (consent + key, load-bearing at execution)', () => {
-    it('requires both consent and a key', async () => {
+    it('requires consent; keyless needs no key', async () => {
       const store = await newStore();
-      expect(store.canSearch).toBe(false);
-
-      await store.setKey('brave', 'k'); // the active provider
       expect(store.canSearch).toBe(false);
 
       store.setConsent(true);
@@ -211,6 +211,12 @@ describe('SearchProviderStore', () => {
 
       store.setConsent(false);
       expect(store.canSearch).toBe(false);
+
+      store.setActiveProvider('brave');
+      store.setConsent(true);
+      expect(store.canSearch).toBe(false);
+      await store.setKey('brave', 'k');
+      expect(store.canSearch).toBe(true);
     });
   });
 
